@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <!-- Console Appender -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+
+        <!-- File Appender -->
+        <File name="FileAppender" fileName="logs/platformer.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </File>
+
+        <!-- Async Appender for better performance -->
+        <Async name="Async">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Async>
+    </Appenders>
+
+    <Loggers>
+        <!-- Game-specific loggers -->
+        <Logger name="ru.mipt.bit.platformer" level="DEBUG" additivity="false">
+            <AppenderRef ref="Async"/>
+        </Logger>
+
+        <!-- LibGDX logging -->
+        <Logger name="com.badlogic" level="INFO" additivity="false">
+            <AppenderRef ref="Async"/>
+        </Logger>
+
+        <Root level="INFO">
+            <AppenderRef ref="Async"/>
+        </Root>
+    </Loggers>
+</Configuration>
