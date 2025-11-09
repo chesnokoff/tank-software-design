@@ -25,7 +25,11 @@ import ru.mipt.bit.platformer.model.level.FileLevelInfoGenerator;
 import ru.mipt.bit.platformer.model.level.LevelInfo;
 import ru.mipt.bit.platformer.model.level.LevelInfoGenerator;
 import ru.mipt.bit.platformer.model.level.RandomLevelInfoGenerator;
+import ru.mipt.bit.platformer.model.Healtable;
 import ru.mipt.bit.platformer.view.AnimatedEntityView;
+import ru.mipt.bit.platformer.view.Drawble;
+import ru.mipt.bit.platformer.view.HealthBarDecorator;
+import ru.mipt.bit.platformer.view.HealthBarManager;
 import ru.mipt.bit.platformer.view.TiledLevel;
 
 /** */
@@ -69,6 +73,12 @@ public class GameDesktopLauncher implements ApplicationListener {
     /** Animated views. */
     private final List<AnimatedEntityView> animatedViews = new ArrayList<>();
 
+    /** */
+    private final List<Drawble> drawableViews = new ArrayList<>();
+
+    /** */
+    private HealthBarManager healthBarManager;
+
     /** {@inheritDoc} */
     @Override
     public void create() {
@@ -87,6 +97,8 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         new ObstaclesManagerImpl(levelInfo.levelWidth(), levelInfo.levelHeight(), internalContext);
 
+        healthBarManager = new HealthBarManager(internalContext);
+
         initiateEntities(levelInfo);
 
         logger.info("Views initialized");
@@ -103,14 +115,18 @@ public class GameDesktopLauncher implements ApplicationListener {
     private void initiateEntities(LevelInfo levelInfo) {
         tankEntity = registerEntity(() -> new Tank(levelInfo.playerStartPosition()));
 
-        registerAnimatedView(() -> new AnimatedEntityView(tankEntity, "images/tank_blue.png", 0.4f));
+        AnimatedEntityView playerView =
+                registerAnimatedView(() -> new AnimatedEntityView(tankEntity, "images/tank_blue.png", 0.4f));
+        decorateWithHealthBar(playerView, tankEntity);
 
         enemyTanks = levelInfo.enemyPositions().stream()
             .map(position -> registerEntity(() -> new Tank(position))).toList();
 
-        enemyTanks.forEach(enemyTank ->
-                registerAnimatedView(() -> new AnimatedEntityView(enemyTank, "images/tank_blue.png", 0.4f))
-            );
+        enemyTanks.forEach(enemyTank -> {
+            AnimatedEntityView enemyView =
+                    registerAnimatedView(() -> new AnimatedEntityView(enemyTank, "images/tank_blue.png", 0.4f));
+            decorateWithHealthBar(enemyView, enemyTank);
+        });
 
         levelInfo.treePositions().stream().map(treePos -> registerEntity(() -> new Tree(treePos)))
             .forEach(treeEntity -> registerAnimatedView(() -> new AnimatedEntityView(treeEntity, "images/greenTree.png", 0f)));
@@ -150,7 +166,7 @@ public class GameDesktopLauncher implements ApplicationListener {
         tiledLevel.render();
 
         batch.begin();
-        animatedViews.forEach(view -> view.draw(batch));
+        drawableViews.forEach(view -> view.draw(batch));
         batch.end();
     }
 
@@ -178,7 +194,19 @@ public class GameDesktopLauncher implements ApplicationListener {
     public <T extends AnimatedEntityView> T registerAnimatedView(Supplier<T> animatedView) {
         T a = animatedView.get();
         animatedViews.add(a);
+        drawableViews.add(a);
         return a;
+    }
+
+    /** */
+    private void decorateWithHealthBar(AnimatedEntityView view, Healtable healtable) {
+        Drawble decoratedView = new HealthBarDecorator(view, healtable, healthBarManager);
+        int index = drawableViews.indexOf(view);
+
+        if (index >= 0)
+            drawableViews.set(index, decoratedView);
+        else
+            drawableViews.add(decoratedView);
     }
 
     /** Clear screen. */

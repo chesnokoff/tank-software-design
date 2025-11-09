@@ -85,6 +85,11 @@ public class AnimatedEntityView implements Drawble {
         }
     }
 
+    /** */
+    public Rectangle rect() {
+        return rect;
+    }
+
     /** {@inheritDoc} */
     @Override public void draw(Batch batch) {
         float rotation = entity.getDirection().rotation;

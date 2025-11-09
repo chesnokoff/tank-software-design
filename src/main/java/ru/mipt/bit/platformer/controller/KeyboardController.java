@@ -6,9 +6,11 @@ import java.util.Map;
 import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.command.CommandManager;
 import ru.mipt.bit.platformer.command.MoveCommand;
+import ru.mipt.bit.platformer.command.ToggleHealthBarsCommand;
 import ru.mipt.bit.platformer.log.GameLogger;
 import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Entity;
+import ru.mipt.bit.platformer.view.HealthBarManager;
 
 /** */
 public class KeyboardController implements InputController {
@@ -63,6 +65,11 @@ public class KeyboardController implements InputController {
         boolean anyKeyPressed = false;
 
         CommandManager commandManager = context.get(CommandManager.class);
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.L)) {
+            logger.debug("Toggle health bars key pressed");
+            commandManager.submit(new ToggleHealthBarsCommand(context.get(HealthBarManager.class)));
+        }
 
         for (Map.Entry<Integer, Direction> entry : keyMap.entrySet()) {
             if (Gdx.input.isKeyPressed(entry.getKey())) {
