@@ -1,0 +1,78 @@
+package ru.mipt.bit.platformer.model;
+
+import com.badlogic.gdx.math.GridPoint2;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import ru.mipt.bit.platformer.InternalContext;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class EntityTest {
+    private Entity entity;
+
+    private ObstaclesManager obstaclesManager;
+
+    private GridPoint2 initialPosition;
+
+    private InternalContext context;
+
+    @BeforeEach
+    void setUp() {
+        context = new InternalContext();
+        initialPosition = new GridPoint2(2, 2);
+        entity = new Entity(initialPosition);
+        obstaclesManager = new ObstaclesManagerImpl(5, 5, context);
+        obstaclesManager.addObstacle(entity);
+    }
+
+    @Test
+    void testInit() {
+        assertEquals(initialPosition, entity.getPosition());
+        assertEquals(initialPosition, entity.getDestination());
+        assertEquals(Direction.UP, entity.getDirection());
+        assertFalse(entity.isMoving());
+    }
+
+    @Test
+    void testMove() {
+        boolean moved = entity.move(Direction.RIGHT, obstaclesManager);
+
+        assertTrue(moved);
+        assertTrue(entity.isMoving());
+
+        assertEquals(new GridPoint2(3, 2), entity.getDestination());
+        assertEquals(Direction.RIGHT, entity.getDirection());
+
+        assertFalse(entity.move(Direction.RIGHT, obstaclesManager));
+        assertEquals(new GridPoint2(3, 2), entity.getDestination());
+    }
+
+    @Test
+    void getPositionShouldReturnCopy() {
+        GridPoint2 position = entity.getPosition();
+        position.set(5, 5);
+
+        assertEquals(initialPosition, entity.getPosition());
+    }
+
+    @Test
+    void getDestinationShouldReturnCopy() {
+        GridPoint2 destination = entity.getDestination();
+        destination.set(5, 5);
+
+        assertEquals(initialPosition, entity.getDestination());
+    }
+
+    @Test
+    void testMoveOutsideBounds() {
+        InternalContext otherContext = new InternalContext();
+        Entity edgeEntity = new Entity(new GridPoint2(0, 0));
+        ObstaclesManager manager = new ObstaclesManagerImpl(2, 2, otherContext);
+        manager.addObstacle(edgeEntity);
+
+        assertFalse(edgeEntity.move(Direction.LEFT, manager));
+        assertFalse(edgeEntity.move(Direction.DOWN, manager));
+    }
+}
