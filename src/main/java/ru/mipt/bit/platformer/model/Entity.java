@@ -118,4 +118,14 @@ public class Entity implements Obstacle {
     public Direction getDirection() {
         return direction;
     }
+
+    /** */
+    public void update(float tickDuration) {
+        // No-op.
+    }
+
+    /** */
+    protected void setDirection(Direction direction) {
+        this.direction = direction;
+    }
 }

@@ -6,4 +6,8 @@ public interface ObstaclesManager {
     void addObstacle(Obstacle obstacle);
 
     boolean isPositionFree(GridPoint2 position);
+
+    void removeObstacle(Obstacle obstacle);
+
+    Obstacle findObstacle(GridPoint2 position);
 }

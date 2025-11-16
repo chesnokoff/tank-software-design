@@ -33,16 +33,21 @@ public class AnimatedEntityView implements Drawble {
     /** Progress of the animation. */
     private float progress = 0f;
 
+    /** */
+    public AnimatedEntityView(Entity entity, Texture texture, float speed) {
+        this.entity = entity;
+        this.region = new TextureRegion(texture);
+        this.rect = new Rectangle(0, 0, region.getRegionWidth(), region.getRegionHeight());
+        this.speed = speed;
+    }
+
     /**
      * @param entity Entity.
      * @param texturePath Texture path.
      * @param speed Speed.
      */
     public AnimatedEntityView(Entity entity, String texturePath, float speed) {
-        this.entity = entity;
-        this.region = new TextureRegion(new Texture(texturePath));
-        this.rect = new Rectangle(0, 0, region.getRegionWidth(), region.getRegionHeight());
-        this.speed = speed;
+        this(entity, new Texture(texturePath), speed);
     }
 
     /**

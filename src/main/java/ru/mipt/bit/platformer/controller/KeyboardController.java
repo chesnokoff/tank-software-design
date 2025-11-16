@@ -5,11 +5,13 @@ import com.badlogic.gdx.Input;
 import java.util.Map;
 import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.command.CommandManager;
+import ru.mipt.bit.platformer.command.FireCommand;
 import ru.mipt.bit.platformer.command.MoveCommand;
 import ru.mipt.bit.platformer.command.ToggleHealthBarsCommand;
 import ru.mipt.bit.platformer.log.GameLogger;
 import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Entity;
+import ru.mipt.bit.platformer.model.Tank;
 import ru.mipt.bit.platformer.view.HealthBarManager;
 
 /** */
@@ -62,6 +64,10 @@ public class KeyboardController implements InputController {
     /** {@inheritDoc} */
     @Override
     public void update(Entity entity) {
+        if (entity == null) {
+            return;
+        }
+
         boolean anyKeyPressed = false;
 
         CommandManager commandManager = context.get(CommandManager.class);
@@ -69,6 +75,11 @@ public class KeyboardController implements InputController {
         if (Gdx.input.isKeyJustPressed(Input.Keys.L)) {
             logger.debug("Toggle health bars key pressed");
             commandManager.submit(new ToggleHealthBarsCommand(context.get(HealthBarManager.class)));
+        }
+
+        if (entity instanceof Tank tank && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            logger.debug("Fire key pressed");
+            commandManager.submit(new FireCommand(tank, context));
         }
 
         for (Map.Entry<Integer, Direction> entry : keyMap.entrySet()) {

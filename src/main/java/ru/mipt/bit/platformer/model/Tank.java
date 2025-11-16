@@ -37,4 +37,10 @@ public class Tank extends Entity implements Healtable {
     public int getMaxHealth() {
         return maxHealth;
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setHealth(int health) {
+        this.health = Math.min(maxHealth, Math.max(0, health));
+    }
 }

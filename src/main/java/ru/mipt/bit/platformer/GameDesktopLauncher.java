@@ -1,13 +1,18 @@
 package ru.mipt.bit.platformer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Disposable;
@@ -16,14 +21,16 @@ import ru.mipt.bit.platformer.controller.InputController;
 import ru.mipt.bit.platformer.controller.KeyboardController;
 import ru.mipt.bit.platformer.controller.RandomController;
 import ru.mipt.bit.platformer.log.GameLogger;
+import ru.mipt.bit.platformer.model.Bullet;
 import ru.mipt.bit.platformer.model.Entity;
-import ru.mipt.bit.platformer.model.ObstaclesManager;
 import ru.mipt.bit.platformer.model.ObstaclesManagerImpl;
 import ru.mipt.bit.platformer.model.Tank;
 import ru.mipt.bit.platformer.model.Tree;
 import ru.mipt.bit.platformer.model.level.FileLevelInfoGenerator;
+import ru.mipt.bit.platformer.model.level.GameLevel;
 import ru.mipt.bit.platformer.model.level.LevelInfo;
 import ru.mipt.bit.platformer.model.level.LevelInfoGenerator;
+import ru.mipt.bit.platformer.model.level.LevelObserver;
 import ru.mipt.bit.platformer.model.level.RandomLevelInfoGenerator;
 import ru.mipt.bit.platformer.model.Healtable;
 import ru.mipt.bit.platformer.view.AnimatedEntityView;
@@ -33,7 +40,7 @@ import ru.mipt.bit.platformer.view.HealthBarManager;
 import ru.mipt.bit.platformer.view.TiledLevel;
 
 /** */
-public class GameDesktopLauncher implements ApplicationListener {
+public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     /** Logger. */
     private static final GameLogger logger = GameLogger.getLogger(GameDesktopLauncher.class);
 
@@ -54,6 +61,9 @@ public class GameDesktopLauncher implements ApplicationListener {
 
     /** Tiled level. */
     private TiledLevel tiledLevel;
+
+    /** */
+    private GameLevel gameLevel;
 
     /** Tank entity. */
     private Tank tankEntity;
@@ -77,7 +87,16 @@ public class GameDesktopLauncher implements ApplicationListener {
     private final List<Drawble> drawableViews = new ArrayList<>();
 
     /** */
+    private final Map<Entity, AnimatedEntityView> entityViews = new HashMap<>();
+
+    /** */
+    private final Map<Entity, Drawble> entityDrawables = new HashMap<>();
+
+    /** */
     private HealthBarManager healthBarManager;
+
+    /** */
+    private Texture bulletTexture;
 
     /** {@inheritDoc} */
     @Override
@@ -99,6 +118,11 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         healthBarManager = new HealthBarManager(internalContext);
 
+        bulletTexture = registerDisposable(this::createBulletTexture);
+
+        gameLevel = new GameLevel(internalContext);
+        gameLevel.addObserver(this);
+
         initiateEntities(levelInfo);
 
         logger.info("Views initialized");
@@ -113,23 +137,14 @@ public class GameDesktopLauncher implements ApplicationListener {
      * @param levelInfo Level info.
      */
     private void initiateEntities(LevelInfo levelInfo) {
-        tankEntity = registerEntity(() -> new Tank(levelInfo.playerStartPosition()));
+        tankEntity = gameLevel.addEntity(new Tank(levelInfo.playerStartPosition()));
 
-        AnimatedEntityView playerView =
-                registerAnimatedView(() -> new AnimatedEntityView(tankEntity, "images/tank_blue.png", 0.4f));
-        decorateWithHealthBar(playerView, tankEntity);
+        enemyTanks = new ArrayList<>();
+        levelInfo.enemyPositions().stream()
+            .map(position -> gameLevel.addEntity(new Tank(position)))
+            .forEach(enemyTanks::add);
 
-        enemyTanks = levelInfo.enemyPositions().stream()
-            .map(position -> registerEntity(() -> new Tank(position))).toList();
-
-        enemyTanks.forEach(enemyTank -> {
-            AnimatedEntityView enemyView =
-                    registerAnimatedView(() -> new AnimatedEntityView(enemyTank, "images/tank_blue.png", 0.4f));
-            decorateWithHealthBar(enemyView, enemyTank);
-        });
-
-        levelInfo.treePositions().stream().map(treePos -> registerEntity(() -> new Tree(treePos)))
-            .forEach(treeEntity -> registerAnimatedView(() -> new AnimatedEntityView(treeEntity, "images/greenTree.png", 0f)));
+        levelInfo.treePositions().forEach(treePos -> gameLevel.addEntity(new Tree(treePos)));
     }
 
     /** */
@@ -155,11 +170,15 @@ public class GameDesktopLauncher implements ApplicationListener {
         float deltaTime = Gdx.graphics.getDeltaTime();
         logger.debug("Delta time: {}", deltaTime);
 
-        keyboardController.update(tankEntity);
+        if (tankEntity != null) {
+            keyboardController.update(tankEntity);
+        }
 
         enemyTanks.forEach(tank -> aiController.update(tank));
 
         internalContext.get(CommandManager.class).executeAll();
+
+        gameLevel.update(deltaTime);
 
         animatedViews.forEach(view -> view.update(deltaTime, tiledLevel));
 
@@ -180,15 +199,6 @@ public class GameDesktopLauncher implements ApplicationListener {
     }
 
     /**
-     * @param entity Entity to register.
-     */
-    public <T extends Entity> T registerEntity(Supplier<T> entity) {
-        T e = entity.get();
-        internalContext.get(ObstaclesManager.class).addObstacle(e);
-        return e;
-    }
-
-    /**
      * @param animatedView Disposable to register.
      */
     public <T extends AnimatedEntityView> T registerAnimatedView(Supplier<T> animatedView) {
@@ -198,8 +208,52 @@ public class GameDesktopLauncher implements ApplicationListener {
         return a;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void onEntityAdded(Entity entity) {
+        AnimatedEntityView view;
+
+        if (entity instanceof Tank tank) {
+            view = registerAnimatedView(() -> new AnimatedEntityView(tank, "images/tank_blue.png", 0.4f));
+            Drawble decorated = decorateWithHealthBar(view, tank);
+            entityDrawables.put(entity, decorated);
+        } else if (entity instanceof Tree tree) {
+            view = registerAnimatedView(() -> new AnimatedEntityView(tree, "images/greenTree.png", 0f));
+            entityDrawables.put(entity, view);
+        } else if (entity instanceof Bullet bullet) {
+            view = registerAnimatedView(() -> new AnimatedEntityView(bullet, bulletTexture, 0.1f));
+            entityDrawables.put(entity, view);
+        } else {
+            return;
+        }
+
+        entityViews.put(entity, view);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void onEntityRemoved(Entity entity) {
+        Drawble drawable = entityDrawables.remove(entity);
+        if (drawable != null) {
+            drawableViews.remove(drawable);
+        }
+
+        AnimatedEntityView view = entityViews.remove(entity);
+        if (view != null) {
+            animatedViews.remove(view);
+        }
+
+        if (entity instanceof Tank tank) {
+            if (tank == tankEntity) {
+                tankEntity = null;
+            } else {
+                enemyTanks.remove(tank);
+            }
+        }
+    }
+
     /** */
-    private void decorateWithHealthBar(AnimatedEntityView view, Healtable healtable) {
+    private Drawble decorateWithHealthBar(AnimatedEntityView view, Healtable healtable) {
         Drawble decoratedView = new HealthBarDecorator(view, healtable, healthBarManager);
         int index = drawableViews.indexOf(view);
 
@@ -207,6 +261,20 @@ public class GameDesktopLauncher implements ApplicationListener {
             drawableViews.set(index, decoratedView);
         else
             drawableViews.add(decoratedView);
+
+        return decoratedView;
+    }
+
+    /** */
+    private Texture createBulletTexture() {
+        Pixmap pixmap = new Pixmap(16, 16, Pixmap.Format.RGBA8888);
+        pixmap.setColor(new Color(1f, 0.8f, 0f, 1f));
+        pixmap.fillCircle(8, 8, 7);
+        pixmap.setColor(Color.DARK_GRAY);
+        pixmap.drawCircle(8, 8, 6);
+        Texture texture = new Texture(pixmap);
+        pixmap.dispose();
+        return texture;
     }
 
     /** Clear screen. */

@@ -58,6 +58,26 @@ public class ObstaclesManagerImpl implements ObstaclesManager {
         return true;
     }
 
+    /** {@inheritDoc} */
+    @Override public void removeObstacle(Obstacle obstacle) {
+        obstacles.remove(obstacle);
+    }
+
+    /** {@inheritDoc} */
+    @Override public Obstacle findObstacle(GridPoint2 position) {
+        for (Obstacle obstacle : obstacles) {
+            if (obstacle.getPosition().equals(position)) {
+                return obstacle;
+            }
+
+            if (obstacle instanceof Entity entity && entity.isMoving() && entity.getDestination().equals(position)) {
+                return obstacle;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @param position Position.
      */
