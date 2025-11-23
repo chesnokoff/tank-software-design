@@ -5,12 +5,13 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.math.GridPoint2;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.command.CommandManager;
 import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Entity;
 import ru.mipt.bit.platformer.model.ObstaclesManager;
 import ru.mipt.bit.platformer.model.ObstaclesManagerImpl;
+import ru.mipt.bit.platformer.model.level.GameLevel;
+import ru.mipt.bit.platformer.view.HealthBarManager;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -29,17 +30,21 @@ class KeyboardControllerTest {
     private ObstaclesManager obstaclesManager;
 
     private CommandManager commandManager;
-    private InternalContext context;
+
+    private GameLevel gameLevel;
+
+    private HealthBarManager healthBarManager;
 
     @BeforeEach
     void setUp() {
-        context = new InternalContext();
-        commandManager = new CommandManager(context);
-        obstaclesManager = new ObstaclesManagerImpl(5, 5, context);
+        commandManager = new CommandManager();
+        obstaclesManager = new ObstaclesManagerImpl(5, 5);
+        healthBarManager = new HealthBarManager();
+        gameLevel = new GameLevel(obstaclesManager);
         entity = new Entity(new GridPoint2(0, 0));
         obstaclesManager.addObstacle(entity);
         obstaclesManager.addObstacle(new Entity(new GridPoint2(1, 0)));
-        keyboardController = new KeyboardController(context);
+        keyboardController = new KeyboardController(commandManager, healthBarManager, gameLevel, obstaclesManager);
 
         com.badlogic.gdx.Input inputMock = mock(com.badlogic.gdx.Input.class);
         Gdx.input = inputMock;

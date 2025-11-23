@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.log.GameLogger;
 import ru.mipt.bit.platformer.model.Bullet;
 import ru.mipt.bit.platformer.model.Entity;
@@ -27,10 +26,16 @@ public class GameLevel {
     /** */
     private final ObstaclesManager obstaclesManager;
 
-    public GameLevel(InternalContext context) {
-        Objects.requireNonNull(context, "context");
-        this.obstaclesManager = context.get(ObstaclesManager.class);
-        context.register(GameLevel.class, this);
+    /** */
+    private final int bulletDamage;
+
+    public GameLevel(ObstaclesManager obstaclesManager) {
+        this(obstaclesManager, Bullet.DEFAULT_DAMAGE);
+    }
+
+    public GameLevel(ObstaclesManager obstaclesManager, int bulletDamage) {
+        this.obstaclesManager = obstaclesManager;
+        this.bulletDamage = bulletDamage;
     }
 
     /** */
@@ -78,7 +83,7 @@ public class GameLevel {
             return;
         }
 
-        Bullet bullet = new Bullet(spawnPoint, shooter.getDirection(), this, obstaclesManager);
+        Bullet bullet = new Bullet(spawnPoint, shooter.getDirection(), bulletDamage, this, obstaclesManager);
         addEntity(bullet);
     }
 
@@ -104,7 +109,7 @@ public class GameLevel {
             return;
         }
         if (value instanceof Tank tank) {
-            damageTank(tank, Bullet.DEFAULT_DAMAGE);
+            damageTank(tank, bulletDamage);
         } else if (value instanceof Bullet bullet) {
             removeEntity(bullet);
         }

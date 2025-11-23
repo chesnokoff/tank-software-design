@@ -3,7 +3,6 @@ package ru.mipt.bit.platformer.model;
 import com.badlogic.gdx.math.GridPoint2;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.mipt.bit.platformer.InternalContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -16,14 +15,11 @@ class EntityTest {
 
     private GridPoint2 initialPosition;
 
-    private InternalContext context;
-
     @BeforeEach
     void setUp() {
-        context = new InternalContext();
         initialPosition = new GridPoint2(2, 2);
         entity = new Entity(initialPosition);
-        obstaclesManager = new ObstaclesManagerImpl(5, 5, context);
+        obstaclesManager = new ObstaclesManagerImpl(5, 5);
         obstaclesManager.addObstacle(entity);
     }
 
@@ -67,9 +63,8 @@ class EntityTest {
 
     @Test
     void testMoveOutsideBounds() {
-        InternalContext otherContext = new InternalContext();
         Entity edgeEntity = new Entity(new GridPoint2(0, 0));
-        ObstaclesManager manager = new ObstaclesManagerImpl(2, 2, otherContext);
+        ObstaclesManager manager = new ObstaclesManagerImpl(2, 2);
         manager.addObstacle(edgeEntity);
 
         assertFalse(edgeEntity.move(Direction.LEFT, manager));

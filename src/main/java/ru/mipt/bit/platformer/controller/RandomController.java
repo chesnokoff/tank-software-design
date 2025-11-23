@@ -1,34 +1,49 @@
 package ru.mipt.bit.platformer.controller;
 
 import java.util.Random;
-import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.command.CommandManager;
 import ru.mipt.bit.platformer.command.FireCommand;
 import ru.mipt.bit.platformer.command.MoveCommand;
 import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Entity;
+import ru.mipt.bit.platformer.model.ObstaclesManager;
 import ru.mipt.bit.platformer.model.Tank;
+import ru.mipt.bit.platformer.model.level.GameLevel;
 
 /** */
 public class RandomController implements InputController {
-    /** Probability to shoot instead of moving. */
-    private static final float FIRE_PROBABILITY = 0.15f;
-
     /** */
     private final Random random;
 
     /** */
-    private final InternalContext context;
+    private final CommandManager commandManager;
 
     /** */
-    public RandomController(InternalContext context) {
-        this(new Random(), context);
+    private final GameLevel gameLevel;
+
+    /** */
+    private final ObstaclesManager obstaclesManager;
+
+    /** */
+    private final float fireProbability;
+
+    public RandomController(Random random, CommandManager commandManager, GameLevel gameLevel, ObstaclesManager obstaclesManager) {
+        this(random, 0.15f, commandManager, gameLevel, obstaclesManager);
     }
 
     /** */
-    private RandomController(Random random, InternalContext context) {
+    public RandomController(
+        Random random,
+        float fireProbability,
+        CommandManager commandManager,
+        GameLevel gameLevel,
+        ObstaclesManager obstaclesManager
+    ) {
         this.random = random;
-        this.context = context;
+        this.fireProbability = fireProbability;
+        this.commandManager = commandManager;
+        this.gameLevel = gameLevel;
+        this.obstaclesManager = obstaclesManager;
     }
 
     /** {@inheritDoc} */
@@ -40,15 +55,13 @@ public class RandomController implements InputController {
         if (tank.isMoving())
             return;
 
-        CommandManager commandManager = context.get(CommandManager.class);
-
-        if (random.nextFloat() < FIRE_PROBABILITY) {
-            commandManager.submit(new FireCommand(tank, context));
+        if (random.nextFloat() < fireProbability) {
+            commandManager.submit(new FireCommand(tank, gameLevel));
             return;
         }
 
         Direction direction = getRandomDirection();
-        commandManager.submit(new MoveCommand(tank, direction, context));
+        commandManager.submit(new MoveCommand(tank, direction, obstaclesManager));
     }
 
     private Direction getRandomDirection() {

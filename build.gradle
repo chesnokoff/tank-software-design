@@ -25,6 +25,8 @@ dependencies {
     implementation deps.gdx.backend_lwjgl3
     implementation deps.gdx.platform_desktop
 
+    implementation 'org.springframework:spring-context:6.2.10'
+
     implementation 'org.apache.logging.log4j:log4j-core:2.20.0'
     implementation 'org.apache.logging.log4j:log4j-api:2.20.0'
 

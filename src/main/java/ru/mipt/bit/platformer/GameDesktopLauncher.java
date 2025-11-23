@@ -16,14 +16,16 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Disposable;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import ru.mipt.bit.platformer.command.CommandManager;
 import ru.mipt.bit.platformer.controller.InputController;
 import ru.mipt.bit.platformer.controller.KeyboardController;
 import ru.mipt.bit.platformer.controller.RandomController;
+import ru.mipt.bit.platformer.config.GameProperties;
+import ru.mipt.bit.platformer.config.PropertiesConfiguration;
 import ru.mipt.bit.platformer.log.GameLogger;
 import ru.mipt.bit.platformer.model.Bullet;
 import ru.mipt.bit.platformer.model.Entity;
-import ru.mipt.bit.platformer.model.ObstaclesManagerImpl;
 import ru.mipt.bit.platformer.model.Tank;
 import ru.mipt.bit.platformer.model.Tree;
 import ru.mipt.bit.platformer.model.level.FileLevelInfoGenerator;
@@ -44,17 +46,14 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     /** Logger. */
     private static final GameLogger logger = GameLogger.getLogger(GameDesktopLauncher.class);
 
-    /** Window width. */
-    private static final int WINDOW_WIDTH = 1280;
-
-    /** Window height. */
-    private static final int WINDOW_HEIGHT = 1024;
-
     /** System environment variable for level file path. */
     private static final String LEVEL_CONFIG_KEY_NAME = "USER.LEVEL";
 
-    /** Internal context. */
-    private final InternalContext internalContext = new InternalContext();
+    /** Game properties */
+    private GameProperties gameProperties;
+
+    /** Application context. */
+    private AnnotationConfigApplicationContext applicationContext;
 
     /** Batch. */
     private Batch batch;
@@ -73,6 +72,9 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
 
     /** Keyboard handler. */
     private InputController aiController;
+
+    /** */
+    private CommandManager commandManager;
 
     /** Enemy tanks. */
     private List<Tank> enemyTanks = new ArrayList<>();
@@ -98,6 +100,19 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     /** */
     private Texture bulletTexture;
 
+    public GameDesktopLauncher(GameProperties bootstrapProperties) {
+        this.gameProperties = bootstrapProperties;
+    }
+
+    private static GameProperties loadGameProperties() {
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.register(PropertiesConfiguration.class);
+        context.refresh();
+        GameProperties properties = context.getBean(GameProperties.class);
+        context.close();
+        return properties;
+    }
+
     /** {@inheritDoc} */
     @Override
     public void create() {
@@ -112,23 +127,22 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
 
         LevelInfo levelInfo = levelGenerator(levelWidth, levelHeight).generate();
 
-        new CommandManager(internalContext);
-
-        new ObstaclesManagerImpl(levelInfo.levelWidth(), levelInfo.levelHeight(), internalContext);
-
-        healthBarManager = new HealthBarManager(internalContext);
+        applicationContext = GameContextFactory.createApplicationContext(levelInfo);
+        gameProperties = applicationContext.getBean(GameProperties.class);
+        commandManager = applicationContext.getBean(CommandManager.class);
+        healthBarManager = applicationContext.getBean(HealthBarManager.class);
 
         bulletTexture = registerDisposable(this::createBulletTexture);
 
-        gameLevel = new GameLevel(internalContext);
+        gameLevel = applicationContext.getBean(GameLevel.class);
         gameLevel.addObserver(this);
 
         initiateEntities(levelInfo);
 
         logger.info("Views initialized");
 
-        keyboardController = new KeyboardController(internalContext);
-        aiController = new RandomController(internalContext);
+        keyboardController = applicationContext.getBean(KeyboardController.class);
+        aiController = applicationContext.getBean(RandomController.class);
 
         logger.info("Game initialization completed successfully");
     }
@@ -137,11 +151,11 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
      * @param levelInfo Level info.
      */
     private void initiateEntities(LevelInfo levelInfo) {
-        tankEntity = gameLevel.addEntity(new Tank(levelInfo.playerStartPosition()));
+        tankEntity = gameLevel.addEntity(new Tank(levelInfo.playerStartPosition(), gameProperties.getTank().getMaxHealth()));
 
         enemyTanks = new ArrayList<>();
         levelInfo.enemyPositions().stream()
-            .map(position -> gameLevel.addEntity(new Tank(position)))
+            .map(position -> gameLevel.addEntity(new Tank(position, gameProperties.getTank().getMaxHealth())))
             .forEach(enemyTanks::add);
 
         levelInfo.treePositions().forEach(treePos -> gameLevel.addEntity(new Tree(treePos)));
@@ -176,7 +190,7 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
 
         enemyTanks.forEach(tank -> aiController.update(tank));
 
-        internalContext.get(CommandManager.class).executeAll();
+        commandManager.executeAll();
 
         gameLevel.update(deltaTime);
 
@@ -214,14 +228,26 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
         AnimatedEntityView view;
 
         if (entity instanceof Tank tank) {
-            view = registerAnimatedView(() -> new AnimatedEntityView(tank, "images/tank_blue.png", 0.4f));
+            view = registerAnimatedView(() -> new AnimatedEntityView(
+                tank,
+                "images/tank_blue.png",
+                gameProperties.getAnimation().getTankSpeed()
+            ));
             Drawble decorated = decorateWithHealthBar(view, tank);
             entityDrawables.put(entity, decorated);
         } else if (entity instanceof Tree tree) {
-            view = registerAnimatedView(() -> new AnimatedEntityView(tree, "images/greenTree.png", 0f));
+            view = registerAnimatedView(() -> new AnimatedEntityView(
+                tree,
+                "images/greenTree.png",
+                gameProperties.getAnimation().getTreeSpeed()
+            ));
             entityDrawables.put(entity, view);
         } else if (entity instanceof Bullet bullet) {
-            view = registerAnimatedView(() -> new AnimatedEntityView(bullet, bulletTexture, 0.1f));
+            view = registerAnimatedView(() -> new AnimatedEntityView(
+                bullet,
+                bulletTexture,
+                gameProperties.getAnimation().getBulletSpeed()
+            ));
             entityDrawables.put(entity, view);
         } else {
             return;
@@ -288,6 +314,9 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
     public void dispose() {
         logger.info("Disposing game resources");
         disposables.forEach(Disposable::dispose);
+        if (applicationContext != null) {
+            applicationContext.close();
+        }
     }
 
     /** {@inheritDoc} */
@@ -307,8 +336,10 @@ public class GameDesktopLauncher implements ApplicationListener, LevelObserver {
      */
     public static void main(String[] args) {
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-        config.setWindowedMode(WINDOW_WIDTH, WINDOW_HEIGHT);
+        GameProperties properties = loadGameProperties();
 
-        new Lwjgl3Application(new GameDesktopLauncher(), config);
+        config.setWindowedMode(properties.getWindow().getWidth(), properties.getWindow().getHeight());
+
+        new Lwjgl3Application(new GameDesktopLauncher(properties), config);
     }
 }

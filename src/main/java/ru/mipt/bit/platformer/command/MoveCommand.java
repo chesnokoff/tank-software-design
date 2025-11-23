@@ -1,6 +1,5 @@
 package ru.mipt.bit.platformer.command;
 
-import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Entity;
 import ru.mipt.bit.platformer.model.ObstaclesManager;
@@ -13,19 +12,19 @@ public class MoveCommand implements Command {
     /** Direction. */
     private final Direction direction;
 
-    /** Context. */
-    private final InternalContext context;
+    /** */
+    private final ObstaclesManager obstaclesManager;
 
     /** */
-    public MoveCommand(Entity entity, Direction direction, InternalContext context) {
+    public MoveCommand(Entity entity, Direction direction, ObstaclesManager obstaclesManager) {
         this.entity = entity;
         this.direction = direction;
-        this.context = context;
+        this.obstaclesManager = obstaclesManager;
     }
 
     /** {@inheritDoc} */
     @Override
     public void execute() {
-        entity.move(direction, context.get(ObstaclesManager.class));
+        entity.move(direction, obstaclesManager);
     }
 }

@@ -3,7 +3,6 @@ package ru.mipt.bit.platformer.command;
 import com.badlogic.gdx.math.GridPoint2;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Entity;
 import ru.mipt.bit.platformer.model.ObstaclesManager;
@@ -16,19 +15,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MoveCommandTest {
     private Entity entity;
     private ObstaclesManager obstaclesManager;
-    private InternalContext context;
 
     @BeforeEach
     void setUp() {
-        context = new InternalContext();
         entity = new Entity(new GridPoint2(2, 2));
-        obstaclesManager = new ObstaclesManagerImpl(5, 5, context);
+        obstaclesManager = new ObstaclesManagerImpl(5, 5);
         obstaclesManager.addObstacle(entity);
     }
 
     @Test
     void executeStartsMovement() {
-        Command command = new MoveCommand(entity, Direction.LEFT, context);
+        Command command = new MoveCommand(entity, Direction.LEFT, obstaclesManager);
 
         command.execute();
 

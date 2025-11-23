@@ -3,7 +3,6 @@ package ru.mipt.bit.platformer.model;
 import java.util.ArrayList;
 import java.util.List;
 import com.badlogic.gdx.math.GridPoint2;
-import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.log.GameLogger;
 
 /** */
@@ -23,12 +22,10 @@ public class ObstaclesManagerImpl implements ObstaclesManager {
     /**
      * @param levelWidth Level width.
      * @param levelHeight Level height.
-     * @param context Context.
      */
-    public ObstaclesManagerImpl(int levelWidth, int levelHeight, InternalContext context) {
+    public ObstaclesManagerImpl(int levelWidth, int levelHeight) {
         this.levelWidth = levelWidth;
         this.levelHeight = levelHeight;
-        context.register(ObstaclesManager.class, this);
     }
 
     /**

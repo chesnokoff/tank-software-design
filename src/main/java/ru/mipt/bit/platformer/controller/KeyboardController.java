@@ -3,7 +3,6 @@ package ru.mipt.bit.platformer.controller;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import java.util.Map;
-import ru.mipt.bit.platformer.InternalContext;
 import ru.mipt.bit.platformer.command.CommandManager;
 import ru.mipt.bit.platformer.command.FireCommand;
 import ru.mipt.bit.platformer.command.MoveCommand;
@@ -11,8 +10,10 @@ import ru.mipt.bit.platformer.command.ToggleHealthBarsCommand;
 import ru.mipt.bit.platformer.log.GameLogger;
 import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Entity;
+import ru.mipt.bit.platformer.model.ObstaclesManager;
 import ru.mipt.bit.platformer.model.Tank;
 import ru.mipt.bit.platformer.view.HealthBarManager;
+import ru.mipt.bit.platformer.model.level.GameLevel;
 
 /** */
 public class KeyboardController implements InputController {
@@ -22,30 +23,55 @@ public class KeyboardController implements InputController {
     /** Key map. */
     private final Map<Integer, Direction> keyMap;
 
-    /** Context. */
-    private final InternalContext context;
+    /** */
+    private final CommandManager commandManager;
+
+    /** */
+    private final HealthBarManager healthBarManager;
+
+    /** */
+    private final GameLevel gameLevel;
+
+    /** */
+    private final ObstaclesManager obstaclesManager;
 
     /**
      * @param keyMap Key map.
-     * @param context Context.
+     * @param commandManager Command manager.
+     * @param healthBarManager Health bar manager.
+     * @param gameLevel Game level.
+     * @param obstaclesManager Obstacles manager.
      */
-    public KeyboardController(Map<Integer, Direction> keyMap, InternalContext context) {
+    public KeyboardController(
+        Map<Integer, Direction> keyMap,
+        CommandManager commandManager,
+        HealthBarManager healthBarManager,
+        GameLevel gameLevel,
+        ObstaclesManager obstaclesManager
+    ) {
         if (keyMap == null) {
             throw new IllegalArgumentException("keyMap");
         }
 
-        if (context == null) {
-            throw new IllegalArgumentException("context");
-        }
-
         this.keyMap = keyMap;
-        this.context = context;
+        this.commandManager = commandManager;
+        this.healthBarManager = healthBarManager;
+        this.gameLevel = gameLevel;
+        this.obstaclesManager = obstaclesManager;
     }
 
     /**
-     * @param context Context.
+     * @param commandManager Command manager.
+     * @param healthBarManager Health bar manager.
+     * @param gameLevel Game level.
+     * @param obstaclesManager Obstacles manager.
      */
-    public KeyboardController(InternalContext context) {
+    public KeyboardController(
+        CommandManager commandManager,
+        HealthBarManager healthBarManager,
+        GameLevel gameLevel,
+        ObstaclesManager obstaclesManager
+    ) {
         this(
             Map.of(
                 Input.Keys.W, Direction.UP,
@@ -57,7 +83,10 @@ public class KeyboardController implements InputController {
                 Input.Keys.D, Direction.RIGHT,
                 Input.Keys.RIGHT, Direction.RIGHT
             ),
-            context
+            commandManager,
+            healthBarManager,
+            gameLevel,
+            obstaclesManager
         );
     }
 
@@ -70,22 +99,20 @@ public class KeyboardController implements InputController {
 
         boolean anyKeyPressed = false;
 
-        CommandManager commandManager = context.get(CommandManager.class);
-
         if (Gdx.input.isKeyJustPressed(Input.Keys.L)) {
             logger.debug("Toggle health bars key pressed");
-            commandManager.submit(new ToggleHealthBarsCommand(context.get(HealthBarManager.class)));
+            commandManager.submit(new ToggleHealthBarsCommand(healthBarManager));
         }
 
         if (entity instanceof Tank tank && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             logger.debug("Fire key pressed");
-            commandManager.submit(new FireCommand(tank, context));
+            commandManager.submit(new FireCommand(tank, gameLevel));
         }
 
         for (Map.Entry<Integer, Direction> entry : keyMap.entrySet()) {
             if (Gdx.input.isKeyPressed(entry.getKey())) {
                 logger.debug("Key {} pressed, direction: {}", entry.getKey(), entry.getValue());
-                commandManager.submit(new MoveCommand(entity, entry.getValue(), context));
+                commandManager.submit(new MoveCommand(entity, entry.getValue(), obstaclesManager));
                 anyKeyPressed = true;
             }
         }
